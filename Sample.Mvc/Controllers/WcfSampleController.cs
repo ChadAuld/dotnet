@@ -71,9 +71,22 @@
         {
             var profiler = MiniProfiler.Current;
 
-            using (profiler.Step("WCF Call"))
+            using (profiler.Step("WCF Call1"))
             {
+                Thread.Sleep(10);
+                using (profiler.Step("40ms of work done before WCF Call1"))
+                {
+                    Thread.Sleep(40);
+                }
+
                 var result = MakeSampleServiceCall(proxy => proxy.FetchRouteHits());
+                Thread.Sleep(10);
+            }
+            using (profiler.Step("WCF Call2"))
+            {
+                Thread.Sleep(10);
+                var result = MakeSampleServiceCall(proxy => proxy.FetchRouteHits());
+                Thread.Sleep(10);
                 return Json(result, JsonRequestBehavior.AllowGet);
             }
         }

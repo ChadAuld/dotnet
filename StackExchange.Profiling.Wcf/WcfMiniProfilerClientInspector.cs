@@ -70,7 +70,7 @@
                 else
                     throw new InvalidOperationException("MVC Mini Profiler does not support EnvelopeNone unless HTTP is the transport mechanism");
 
-                return new MiniProfilerStart { StartTime = miniProfiler.DurationMilliseconds };
+                return new MiniProfilerStart { StartTime = miniProfiler.GetCurrentDuration() };
             }
 
             return null;

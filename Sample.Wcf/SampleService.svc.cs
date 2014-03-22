@@ -47,11 +47,39 @@
         /// <returns>the set of route hits.</returns>
         public IEnumerable<RouteHit> FetchRouteHits()
         {
+            Thread.Sleep(50);
             var profiler = MiniProfiler.Current;
             using (profiler.Step("Do more complex stuff"))
-            {
-                Thread.Sleep(new Random().Next(100, 400));
+            {  
+                Thread.Sleep(25);
+                if (MiniProfiler.Current != null && MiniProfiler.Current.Head != null)
+                {
+                    Thread.Sleep(25);
+                    MiniProfiler.Current.Head.AddCustomTiming("something", new CustomTiming(MiniProfiler.Current, "yahoo")
+                    {
+                        Id = Guid.NewGuid(),
+                        DurationMilliseconds = 25,
+                        FirstFetchDurationMilliseconds = 25,
+                        ExecuteType = "GET"
+                    });
+                    Thread.Sleep(25);
+                    MiniProfiler.Current.Head.AddCustomTiming("something", new CustomTiming(MiniProfiler.Current, "yeehaw")
+                    {
+                        Id = Guid.NewGuid(),
+                        DurationMilliseconds = 25,
+                        FirstFetchDurationMilliseconds = 25,
+                        ExecuteType = "GET"
+                    });
+                }
+                Thread.Sleep(25);
             }
+
+            Thread.Sleep(50);
+            using (profiler.Step("some more stuff"))
+            {
+                Thread.Sleep(15);
+            }
+            Thread.Sleep(35);
 
             using (profiler.Step("FetchRouteHits"))
             using (var conn = GetConnection(profiler))
@@ -59,6 +87,8 @@
                 var result = conn.Query<RouteHit>("select RouteName, HitCount from RouteHits order by RouteName");
                 return result.ToList();
             }
+
+            return new List<RouteHit> { new RouteHit { HitCount = 42, RouteName = "oops" } };
         }
 
         /// <summary>

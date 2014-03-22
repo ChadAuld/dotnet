@@ -1,7 +1,5 @@
 ﻿namespace Sample.Wcf
 {
-    using System.Web;
-
     /// <summary>
     /// The WCF common.
     /// </summary>
@@ -20,8 +18,8 @@
             get
             {
                 if (connectionString == null)
-                    connectionString = "Data Source = " + HttpContext.Current.Server.MapPath("~/App_Data/TestMiniProfiler.sqlite");
-                
+                    connectionString = "Data Source = " + System.Web.Hosting.HostingEnvironment.MapPath("~/App_Data/TestMiniProfiler.sqlite");
+                    
                 return connectionString;
             }
         }

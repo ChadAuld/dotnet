@@ -159,6 +159,7 @@ namespace StackExchange.Profiling
                             for (int i = children.Count - 1; i >= 0; i--)
                             {
                                 children[i].ParentTiming = timing;
+                                children[i].Profiler = this;
                                 timings.Push(children[i]); // FLORIDA!  TODO: refactor this and other stack creation methods into one 
                             }
                         }
@@ -488,6 +489,14 @@ namespace StackExchange.Profiling
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Gets the duration so far.
+        /// </summary>
+        public decimal GetCurrentDuration()
+        {
+            return GetRoundedMilliseconds(ElapsedTicks);
         }
 
         /// <summary>

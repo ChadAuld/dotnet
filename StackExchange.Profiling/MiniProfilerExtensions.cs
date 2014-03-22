@@ -151,6 +151,7 @@ namespace StackExchange.Profiling
         {
             if (profiler == null || profiler.Head == null || externalProfiler == null) return;
             profiler.Head.AddChild(externalProfiler.Root);
+            externalProfiler.Root.SetProfiler(profiler);
         }
 
         /// <summary>

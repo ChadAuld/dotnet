@@ -197,6 +197,14 @@ namespace StackExchange.Profiling
         internal MiniProfiler Profiler { get; set; }
 
         /// <summary>
+        /// Sets the internal profiler. Only use this to aide deserialization.
+        /// </summary>
+        public void SetProfiler(MiniProfiler profiler)
+        {
+            Profiler = profiler;
+        }
+
+        /// <summary>
         /// The unique identifier used to identify the Profiler with which this Timing is associated. Used for sql storage.
         /// </summary>
         [ScriptIgnore]
