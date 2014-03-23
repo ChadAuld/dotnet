@@ -3,12 +3,20 @@
     using System;
     using System.Text;
     using System.Text.RegularExpressions;
+    using Raven.Client;
     using Raven.Client.Document;
     using Raven.Client.Connection.Profiling;
 
     public class MiniProfilerRaven
     {
         private static readonly Regex IndexQueryPattern = new Regex(@"/indexes/[A-Za-z/]+");
+
+        private static Func<IDocumentSession> _getSessionFunc;
+        private static Timing _previousHeadTiming;
+        private static IDocumentSession _previousDocumentSession;
+        private const int SessionCountSeed = 2;
+        private const string BaseTimingName = "raven";
+        private static int _sessionCountForCurrentHead = 0;
 
         /// <summary>
         /// Initialize MiniProfilerRaven for the given DocumentStore (only call once!)
@@ -22,12 +30,48 @@
 
         }
 
+        public static void RegisterGetDocumentSessionFunc(Func<IDocumentSession> getSessionFunc)
+        {
+            _getSessionFunc = getSessionFunc;
+        }
+
         private static void IncludeTiming(RequestResultArgs request)
         {
             if (MiniProfiler.Current == null || MiniProfiler.Current.Head == null)
                 return;
 
-            MiniProfiler.Current.Head.AddCustomTiming("raven", new CustomTiming(MiniProfiler.Current, BuildCommandString(request))
+            string timingName = BaseTimingName;
+
+            if (_getSessionFunc != null)
+            {
+                if (_previousHeadTiming == null)
+                    _previousHeadTiming = MiniProfiler.Current.Head;
+                if (_previousDocumentSession == null)
+                    _previousDocumentSession = _getSessionFunc();
+
+                var currentHeadTiming = MiniProfiler.Current.Head;
+                var currentDocumentSession = _getSessionFunc();
+
+                bool sameTiming = _previousHeadTiming.Equals(currentHeadTiming);
+                bool differentDocumentSession = _previousDocumentSession != currentDocumentSession;
+
+                if (sameTiming && differentDocumentSession)
+                {
+                    int currentSessionCount = SessionCountSeed + _sessionCountForCurrentHead;
+                    timingName += ".s" + currentSessionCount;
+                    _sessionCountForCurrentHead++;
+                }
+                else if (!_previousHeadTiming.Equals(currentHeadTiming))
+                {
+                    _sessionCountForCurrentHead = 0;
+                    timingName = BaseTimingName;
+                }
+
+                _previousHeadTiming = currentHeadTiming;
+                _previousDocumentSession = currentDocumentSession;
+            }
+
+            MiniProfiler.Current.Head.AddCustomTiming(timingName, new CustomTiming(MiniProfiler.Current, BuildCommandString(request))
             {
                 Id = Guid.NewGuid(),
                 DurationMilliseconds = (decimal)request.DurationMilliseconds,
