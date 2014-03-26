@@ -3,7 +3,6 @@
     using System;
     using System.Text;
     using System.Text.RegularExpressions;
-    using Raven.Client;
     using Raven.Client.Document;
     using Raven.Client.Connection.Profiling;
 
@@ -11,9 +10,8 @@
     {
         private static readonly Regex IndexQueryPattern = new Regex(@"/indexes/[A-Za-z/]+");
 
-        private static Func<IDocumentSession> _getSessionFunc;
         private static Timing _previousHeadTiming;
-        private static IDocumentSession _previousDocumentSession;
+        private static Guid? _previousDocumentSessionId;
         private const int SessionCountSeed = 2;
         private const string BaseTimingName = "raven";
         private static int _sessionCountForCurrentHead = 0;
@@ -26,50 +24,44 @@
         {
 
             if (store != null && store.JsonRequestFactory != null)
-                store.JsonRequestFactory.LogRequest += (sender, r) => IncludeTiming(JsonFormatter.FormatRequest(r));
+                store.JsonRequestFactory.LogRequest += (sender, r) => IncludeTiming(sender, JsonFormatter.FormatRequest(r));
 
         }
 
-        public static void RegisterGetDocumentSessionFunc(Func<IDocumentSession> getSessionFunc)
-        {
-            _getSessionFunc = getSessionFunc;
-        }
-
-        private static void IncludeTiming(RequestResultArgs request)
+        private static void IncludeTiming(object sender, RequestResultArgs request)
         {
             if (MiniProfiler.Current == null || MiniProfiler.Current.Head == null)
                 return;
 
             string timingName = BaseTimingName;
 
-            if (_getSessionFunc != null)
+            var profInfo = (IHoldProfilingInformation)sender;
+
+            if (_previousHeadTiming == null)
+                _previousHeadTiming = MiniProfiler.Current.Head;
+            if (_previousDocumentSessionId == null)
+                _previousDocumentSessionId = profInfo.ProfilingInformation.Id;
+
+            var currentHeadTiming = MiniProfiler.Current.Head;
+            var currentDocumentSessionId = profInfo.ProfilingInformation.Id;
+
+            bool sameTiming = _previousHeadTiming.Equals(currentHeadTiming);
+            bool differentDocumentSession = _previousDocumentSessionId != currentDocumentSessionId;
+
+            if (sameTiming && differentDocumentSession)
             {
-                if (_previousHeadTiming == null)
-                    _previousHeadTiming = MiniProfiler.Current.Head;
-                if (_previousDocumentSession == null)
-                    _previousDocumentSession = _getSessionFunc();
-
-                var currentHeadTiming = MiniProfiler.Current.Head;
-                var currentDocumentSession = _getSessionFunc();
-
-                bool sameTiming = _previousHeadTiming.Equals(currentHeadTiming);
-                bool differentDocumentSession = _previousDocumentSession != currentDocumentSession;
-
-                if (sameTiming && differentDocumentSession)
-                {
-                    int currentSessionCount = SessionCountSeed + _sessionCountForCurrentHead;
-                    timingName += ".s" + currentSessionCount;
-                    _sessionCountForCurrentHead++;
-                }
-                else if (!_previousHeadTiming.Equals(currentHeadTiming))
-                {
-                    _sessionCountForCurrentHead = 0;
-                    timingName = BaseTimingName;
-                }
-
-                _previousHeadTiming = currentHeadTiming;
-                _previousDocumentSession = currentDocumentSession;
+                int currentSessionCount = SessionCountSeed + _sessionCountForCurrentHead;
+                timingName += ".s" + currentSessionCount;
+                _sessionCountForCurrentHead++;
             }
+            else if (!_previousHeadTiming.Equals(currentHeadTiming))
+            {
+                _sessionCountForCurrentHead = 0;
+                timingName = BaseTimingName;
+            }
+
+            _previousHeadTiming = currentHeadTiming;
+            _previousDocumentSessionId = currentDocumentSessionId;
 
             MiniProfiler.Current.Head.AddCustomTiming(timingName, new CustomTiming(MiniProfiler.Current, BuildCommandString(request))
             {
