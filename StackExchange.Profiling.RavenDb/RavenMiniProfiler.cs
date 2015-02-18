@@ -24,7 +24,7 @@
         {
 
             if (store != null && store.JsonRequestFactory != null)
-                store.JsonRequestFactory.LogRequest += (sender, r) => IncludeTiming(sender, JsonFormatter.FormatRequest(r));
+                store.JsonRequestFactory.LogRequest += IncludeTiming;
 
         }
 
@@ -32,6 +32,8 @@
         {
             if (MiniProfiler.Current == null || MiniProfiler.Current.Head == null)
                 return;
+
+            var formattedRequest = JsonFormatter.FormatRequest(request);
 
             string timingName = BaseTimingName;
 
@@ -63,12 +65,12 @@
             _previousHeadTiming = currentHeadTiming;
             _previousDocumentSessionId = currentDocumentSessionId;
 
-            MiniProfiler.Current.Head.AddCustomTiming(timingName, new CustomTiming(MiniProfiler.Current, BuildCommandString(request))
+            MiniProfiler.Current.Head.AddCustomTiming(timingName, new CustomTiming(MiniProfiler.Current, BuildCommandString(formattedRequest))
             {
                 Id = Guid.NewGuid(),
-                DurationMilliseconds = (decimal)request.DurationMilliseconds,
-                FirstFetchDurationMilliseconds = (decimal)request.DurationMilliseconds,
-                ExecuteType = request.Status.ToString()
+                DurationMilliseconds = (decimal)formattedRequest.DurationMilliseconds,
+                FirstFetchDurationMilliseconds = (decimal)formattedRequest.DurationMilliseconds,
+                ExecuteType = formattedRequest.Status.ToString()
             });
         }
 
